@@ -14,6 +14,8 @@
 
 GLFWwindow *window;
 
+vec3 pos = {0.0f, 2.0f, 5.0f}, dir = {0.0f, 0.0f, 0.0f};
+
 void init();
 void deinit();
 
@@ -24,6 +26,9 @@ int main() {
 
     double time_elapsed = 0, last_second = 0;
     int frames = 0;
+
+    terrain_t terrain;
+    init_terrain(&terrain);
 
     int shader = load_shader("shaders/vertex.glsl", "shaders/fragment.glsl");
     glUseProgram(shader);
@@ -50,7 +55,14 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         mat4x4 view, projection;
-        mat4x4_look_at(view, (vec3){0, 2, 5}, (vec3){0, 0, 0}, (vec3){0, 1, 0});
+
+        vec3 tmp, ahead;
+        vec3_scale(tmp, dir, delta * 2.0f);
+        vec3_add(pos, tmp, pos);
+
+        vec3_add(ahead, pos, (vec3){0.0f, 0.0f, -1.0f});
+        mat4x4_look_at(view, pos, ahead, (vec3){0, 1, 0});
+
         mat4x4_perspective(projection, 45.0f, (float)width / (float)height, 0.1f, 100.0f);
 
         GLint view_loc = glGetUniformLocation(shader, "view");
@@ -58,6 +70,8 @@ int main() {
 
         GLint projection_loc = glGetUniformLocation(shader, "projection");
         glUniformMatrix4fv(projection_loc, 1, GL_FALSE, (float *)projection);
+
+        draw_terrain(&terrain);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -74,6 +88,30 @@ void error_callback(int error, const char *description) {
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GLFW_TRUE);
+
+    if (key == GLFW_KEY_W && action == GLFW_PRESS)
+        dir[2] = -1.0f;
+
+    if (key == GLFW_KEY_W && action == GLFW_RELEASE && dir[2] < 0)
+        dir[2] = 0.0f;
+
+    if (key == GLFW_KEY_S && action == GLFW_PRESS)
+        dir[2] = 1.0f;
+
+    if (key == GLFW_KEY_S && action == GLFW_RELEASE && dir[2] > 0)
+        dir[2] = 0.0f;
+
+    if (key == GLFW_KEY_A && action == GLFW_PRESS)
+        dir[0] = -1.0f;
+
+    if (key == GLFW_KEY_A && action == GLFW_RELEASE && dir[0] < 0)
+        dir[0] = 0.0f;
+
+    if (key == GLFW_KEY_D && action == GLFW_PRESS)
+        dir[0] = 1.0f;
+
+    if (key == GLFW_KEY_D && action == GLFW_RELEASE && dir[0] > 0)
+        dir[0] = 0.0f;
 }
 
 void init() {
@@ -97,7 +135,7 @@ void init() {
 
     glfwSetKeyCallback(window, key_callback);
 
-    // OpenGL setup
+    glClearColor(0.2f, 0.3f, 1.0f, 1.0f);
 
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);

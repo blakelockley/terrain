@@ -2,6 +2,7 @@
 #define TERRAIN_H
 
 #include "glfw.h"
+#include "linmath.h"
 
 struct _terrain_t {
     GLuint vao, vbo, ebo;

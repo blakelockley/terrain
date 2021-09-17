@@ -14,7 +14,7 @@
 
 GLFWwindow *window;
 
-vec3 pos = {0.0f, 2.0f, 5.0f}, dir = {0.0f, 0.0f, 0.0f};
+vec3 pos = {0.0f, 20.0f, 5.0f}, dir = {0.0f, 0.0f, 0.0f};
 
 void init();
 void deinit();
@@ -57,10 +57,10 @@ int main() {
         mat4x4 view, projection;
 
         vec3 tmp, ahead;
-        vec3_scale(tmp, dir, delta * 2.0f);
+        vec3_scale(tmp, dir, delta * 20.0f);
         vec3_add(pos, tmp, pos);
 
-        vec3_add(ahead, pos, (vec3){0.0f, 0.0f, -1.0f});
+        vec3_add(ahead, pos, (vec3){0.0f, -0.5f, -1.0f});
         mat4x4_look_at(view, pos, ahead, (vec3){0, 1, 0});
 
         mat4x4_perspective(projection, 45.0f, (float)width / (float)height, 0.1f, 100.0f);
@@ -112,6 +112,18 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 
     if (key == GLFW_KEY_D && action == GLFW_RELEASE && dir[0] > 0)
         dir[0] = 0.0f;
+
+    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+        dir[1] = 1.0f;
+
+    if (key == GLFW_KEY_SPACE && action == GLFW_RELEASE && dir[1] > 0)
+        dir[1] = 0.0f;
+
+    if (key == GLFW_KEY_LEFT_SHIFT && action == GLFW_PRESS)
+        dir[1] = -1.0f;
+
+    if (key == GLFW_KEY_LEFT_SHIFT && action == GLFW_RELEASE && dir[1] < 0)
+        dir[1] = 0.0f;
 }
 
 void init() {

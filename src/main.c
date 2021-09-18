@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,7 +15,9 @@
 
 GLFWwindow *window;
 
-vec3 pos = {0.0f, 20.0f, 5.0f}, dir = {0.0f, 0.0f, 0.0f};
+float yaw = 0.0f, pitch = -M_PI_4;
+vec3 pos = {0.0f, 10.0f, 0.0f};
+vec3 dir = {0.0f, 0.0f, 0.0f};
 
 void init();
 void deinit();
@@ -49,20 +52,25 @@ int main() {
             last_second = current_time;
         }
 
+        // Update
+
+        vec3 tmp, ahead;
+        vec3_scale(tmp, dir, delta * 20.0f);
+        vec3_add(pos, tmp, pos);
+
+        float xz = cos(pitch);
+        vec3_set(ahead, xz * sin(yaw), sin(pitch), -xz * cos(yaw));
+        vec3_add(ahead, ahead, pos);
+
+        // Render
+
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         mat4x4 view, projection;
-
-        vec3 tmp, ahead;
-        vec3_scale(tmp, dir, delta * 20.0f);
-        vec3_add(pos, tmp, pos);
-
-        vec3_add(ahead, pos, (vec3){0.0f, -0.5f, -1.0f});
         mat4x4_look_at(view, pos, ahead, (vec3){0, 1, 0});
-
         mat4x4_perspective(projection, 45.0f, (float)width / (float)height, 0.1f, 100.0f);
 
         GLint view_loc = glGetUniformLocation(shader, "view");
@@ -126,6 +134,29 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
         dir[1] = 0.0f;
 }
 
+void mouse_position_handler(GLFWwindow *window, double xpos, double ypos) {
+    static float xprev, yprev;
+    static int has_init = 0;
+
+    if (!has_init) {
+        xprev = xpos;
+        yprev = ypos;
+        has_init = 1;
+    }
+
+    float dx = (xpos - xprev) * 0.001f;
+    float dy = (ypos - yprev) * -0.001f;
+
+    xprev = xpos;
+    yprev = ypos;
+
+    pitch += dy;
+    pitch = fmaxf(-M_PI_2 + 0.01f, fminf(pitch, M_PI_2 - 0.01f));
+
+    yaw += dx;
+    yaw = fmaxf(-M_PI_4 + 0.01f, fminf(yaw, M_PI_4 - 0.01f));
+}
+
 void init() {
     glfwSetErrorCallback(error_callback);
     if (!glfwInit())
@@ -146,6 +177,8 @@ void init() {
     glfwSwapInterval(1);
 
     glfwSetKeyCallback(window, key_callback);
+    glfwSetCursorPosCallback(window, mouse_position_handler);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     glClearColor(0.2f, 0.3f, 1.0f, 1.0f);
 

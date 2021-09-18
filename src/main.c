@@ -62,6 +62,8 @@ int main() {
         vec3_set(ahead, xz * sin(yaw), sin(pitch), -xz * cos(yaw));
         vec3_add(ahead, ahead, pos);
 
+        update_terrain(&terrain, pos);
+
         // Render
 
         int width, height;

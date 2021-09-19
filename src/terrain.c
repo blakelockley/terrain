@@ -8,6 +8,7 @@
 #define CHUNK_SIZE_1 (CHUNK_SIZE + 1)
 #define CHUNK_SIZE_SQ (CHUNK_SIZE * CHUNK_SIZE)
 #define CHUNK_SIZE_1_SQ (CHUNK_SIZE_1 * CHUNK_SIZE_1)
+#define GRID_SIZE 16
 
 float noise(float x, float y);
 
@@ -58,10 +59,6 @@ void free_terrain(terrain_t *terrain) {
     glDeleteBuffers(1, &terrain->vbo);
 }
 
-float noise(float x, float z) {
-    return rand() / (float)RAND_MAX;
-}
-
 void generate_chunk(terrain_t *terrain, int chunk_x, int chunk_z, int offset) {
     vec3 vertices[CHUNK_SIZE_1 * CHUNK_SIZE_1];
 
@@ -73,7 +70,7 @@ void generate_chunk(terrain_t *terrain, int chunk_x, int chunk_z, int offset) {
             float x_ = min_x + x;
             float z_ = min_z - z;
 
-            vec3_set(vertices[x + z * CHUNK_SIZE_1], x_, noise(x_, z_), z_);
+            vec3_set(vertices[x + z * CHUNK_SIZE_1], x_, (noise(x_, z_) + 1.0f) / 2.0f, z_);
         }
 
     glBindBuffer(GL_ARRAY_BUFFER, terrain->vbo);
@@ -92,4 +89,70 @@ void update_terrain(terrain_t *terrain, vec3 pos) {
             for (int z = -1; z <= 1; z++)
                 generate_chunk(terrain, chunk_x + x, chunk_z + z, (x + 1) + (z + 1) * 3);
     }
+}
+
+float lerp(float a, float b, float t) {
+    return a + (b - a) * t;
+}
+
+float fade(float t) {
+    return t * t * t * (t * (t * 6 - 15) + 10);
+}
+
+void grad(vec2 v, int ix, int iy) {
+    // https://en.wikipedia.org/wiki/Perlin_noise
+
+    const unsigned int w = 8 * sizeof(unsigned);
+    const unsigned int s = w / 2;  // rotation width
+    unsigned int a = ix, b = iy;
+
+    a *= 3284157443;
+    b ^= a << s | a >> (w - s);
+    b *= 1911520717;
+    a ^= b << s | b >> (w - s);
+    a *= 2048419325;
+
+    float r = a * (M_PI / ~(~0u >> 1));  // in [0, 2*Pi]
+    vec2_set(v, sinf(r), cosf(r));
+}
+
+float noise(float x, float z) {
+    x = fabs(x);
+    z = fabs(z);
+
+    int xi = (int)x / GRID_SIZE;
+    int zi = (int)z / GRID_SIZE;
+
+    vec2 controls[4];
+    grad(controls[0], xi + 0, zi + 0);
+    grad(controls[1], xi + 1, zi + 0);
+    grad(controls[2], xi + 0, zi + 1);
+    grad(controls[3], xi + 1, zi + 1);
+
+    for (int i = 0; i < 4; i++)
+        vec2_normalize(controls[i], controls[i]);
+
+    float xf = (x - xi * GRID_SIZE) / GRID_SIZE;
+    float zf = (z - zi * GRID_SIZE) / GRID_SIZE;
+
+    vec2 p;
+    vec2_set(p, xf, zf);
+
+    vec2 offsets[4];
+    vec2_sub(offsets[0], p, (vec2){0.0f, 0.0f});
+    vec2_sub(offsets[1], p, (vec2){1.0f, 0.0f});
+    vec2_sub(offsets[2], p, (vec2){0.0f, 1.0f});
+    vec2_sub(offsets[3], p, (vec2){1.0f, 1.0f});
+
+    float u0, v0, uv0;
+    u0 = vec2_dot(offsets[0], controls[0]);
+    v0 = vec2_dot(offsets[1], controls[1]);
+    uv0 = lerp(u0, v0, fade(xf));
+
+    float u1, v1, uv1;
+    u1 = vec2_dot(offsets[2], controls[2]);
+    v1 = vec2_dot(offsets[3], controls[3]);
+    uv1 = lerp(u1, v1, fade(xf));
+
+    return lerp(uv0, uv1, fade(zf));
 }

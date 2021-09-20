@@ -99,12 +99,14 @@ float fade(float t) {
     return t * t * t * (t * (t * 6 - 15) + 10);
 }
 
-void grad(vec2 v, int ix, int iy) {
+void grad(vec2 v, int xi, int zi) {
     // https://en.wikipedia.org/wiki/Perlin_noise
 
-    const unsigned int w = 8 * sizeof(unsigned);
+    const unsigned int w = 8 * sizeof(unsigned int);
     const unsigned int s = w / 2;  // rotation width
-    unsigned int a = ix, b = iy;
+
+    unsigned int a = *(unsigned int *)&xi;
+    unsigned int b = *(unsigned int *)&zi;
 
     a *= 3284157443;
     b ^= a << s | a >> (w - s);
@@ -117,11 +119,14 @@ void grad(vec2 v, int ix, int iy) {
 }
 
 float noise(float x, float z) {
-    x = fabs(x);
-    z = fabs(z);
+    int xd = (x < 0) ? -1 : 1;
+    int zd = (z < 0) ? -1 : 1;
 
     int xi = (int)x / GRID_SIZE;
     int zi = (int)z / GRID_SIZE;
+
+    if (xd == -1) xi--;
+    if (zd == -1) zi--;
 
     vec2 controls[4];
     grad(controls[0], xi + 0, zi + 0);
@@ -129,11 +134,16 @@ float noise(float x, float z) {
     grad(controls[2], xi + 0, zi + 1);
     grad(controls[3], xi + 1, zi + 1);
 
-    for (int i = 0; i < 4; i++)
-        vec2_normalize(controls[i], controls[i]);
+    float xf, zf;
+    if (xd == 1)
+        xf = (x - xi * GRID_SIZE) / GRID_SIZE;
+    else
+        xf = 1 - ((fabs(x) + GRID_SIZE) + xi * GRID_SIZE) / GRID_SIZE;
 
-    float xf = (x - xi * GRID_SIZE) / GRID_SIZE;
-    float zf = (z - zi * GRID_SIZE) / GRID_SIZE;
+    if (zd == 1)
+        zf = (z - zi * GRID_SIZE) / GRID_SIZE;
+    else
+        zf = 1 - ((fabs(z) + GRID_SIZE) + zi * GRID_SIZE) / GRID_SIZE;
 
     vec2 p;
     vec2_set(p, xf, zf);
